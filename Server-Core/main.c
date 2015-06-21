@@ -35,42 +35,14 @@ void *core_thread_main(void *pParam){
     struct param p;
     p = *(struct param*)pParam;
 
-    //variables related with creating socket
-    int opt = TRUE;
-    int sockfd, portno;
+    int sockfd;
     struct sockaddr_in serv_addr, cli_addr;
 
-    //set port number and bind port
-    portno = p.portno;
-
-    //create parent socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd<0){
-        printf("ERROR: Failed creating socket.");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Socket File Descripter: %d\n", sockfd);
-    }
-
-    //set socket to accept multiple connections
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0){
-        printf("ERROR: Set Reuse Addr failed\n");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Set Reuse Addr successful\n");
-    }
-
-    //bind port
-    serv_addr = getservaddr(portno);
-    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){
-        printf("ERROR: Port binding failed\n");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Port binding successfully, listening on port %d\n", portno);
-    }
+    sockfd = setupmastersocket(p.portno);
 
     //clients
     int clients[MAX_CLIENTS];
+    char (*nicknames[MAX_CLIENTS])[100];
     fd_set fds;
 
     //initialization of clients
@@ -79,20 +51,17 @@ void *core_thread_main(void *pParam){
         clients[i] = 0;
     }
 
-    //start listening
-    if (listen(sockfd, 10) < 0){
-        printf("ERROR: Listen failed\n");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Socket listening started\n");
-    }
+
 
     //enter main loop
-    int addrlen = sizeof(serv_addr);
-    printf("Server Address Length: %d\n", addrlen);
+
 
     int maxsd = 0;
     int activity = 0;
+    int lenread = 0;
+    char* buffer[BUFFER_SIZE];
+    int new_socket, cli_addrlen;
+
     while (TRUE){
         //clear fd set
         FD_ZERO(&fds);
@@ -116,20 +85,56 @@ void *core_thread_main(void *pParam){
         }
 
         //check parent socket
+
         if (FD_ISSET(sockfd, &fds)){
             printf("Incoming connection\n");
 
             //accept incoming connection
-            int new_socket, cli_addrlen;
-            cli_addrlen= sizeof(cli_addr);
+
  //           ;
             if ((new_socket = accept(sockfd, (struct sockaddr *)&cli_addr,
                     (socklen_t*)&cli_addrlen)) < 0){
                 printf("ERROR: Accept connection failed\n");
             }else{
-                printf("Abc\n");
+
                 printf("Connection established: socket %d, ip %s, port %d \n",
                         new_socket, inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port));
+            }
+
+            //add the new socket into child array
+            for (i = 0; i < MAX_CLIENTS; i++){
+                if (clients[i] == 0){
+                    clients[i] = new_socket;
+                    free(nicknames[i]);
+                    nicknames[i] = malloc(strlen("Annoymous")+1);
+                    strcpy(nicknames[i], "Annoymous");
+                    break;
+                }
+            }
+            printf("Socket Added, ID:%d\n", i);
+        }
+
+        //check other child sockets
+        for (i = 0; i < MAX_CLIENTS; i++){
+            if (clients[i] != 0){
+                printf("Checking clients no.%d, fd %d\n", i, clients[i]);
+                if (FD_ISSET(clients[i], &fds)){
+                    printf("Message from socket number %d, fd %d\n", i, clients[i]);
+                    //Socket No.i is ready to write
+                    if ((lenread = read(clients[i], buffer, BUFFER_SIZE))==0){
+                        // The socket is closed by client
+                        getpeername(clients[i], (struct sockaddr*)&cli_addr, (socklen_t*)&cli_addrlen);
+                        printf("Client disconnected: IP %s, port %d \n, nickname %s",
+                                inet_ntoa(cli_addr.sin_addr), ntohs(cli_addr.sin_port), nicknames[i]);
+
+                        //close the socket
+                        close(clients[i]);
+                        clients[i] = 0;
+                    }else{
+                        //There is a message from the client
+                        processmessage(buffer, i, &clients, &nicknames);
+                    }
+                }
             }
         }
     }
@@ -161,4 +166,52 @@ struct sockaddr_in getservaddr(int portno){
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
     return serv_addr;
+}
+
+int setupmastersocket(int portno){
+
+    //create parent socket
+    //variables related with creating socket
+    int opt = TRUE;
+    int sockfd;
+    struct sockaddr_in serv_addr;
+
+    //set port number and bind port
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd<0){
+        printf("ERROR: Failed creating socket.");
+        exit(EXIT_FAILURE);
+    }else{
+        printf("Socket File Descripter: %d\n", sockfd);
+    }
+
+    //set socket to accept multiple connections
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0){
+        printf("ERROR: Set Reuse Addr failed\n");
+        exit(EXIT_FAILURE);
+    }else{
+        printf("Set Reuse Addr successful\n");
+    }
+
+    //bind port
+    serv_addr = getservaddr(portno);
+    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){
+        printf("ERROR: Port binding failed\n");
+        exit(EXIT_FAILURE);
+    }else{
+        printf("Port binding successfully, listening on port %d\n", portno);
+    }
+
+    //start listening
+    if (listen(sockfd, 10) < 0){
+        printf("ERROR: Listen failed\n");
+        exit(EXIT_FAILURE);
+    }else{
+        printf("Socket listening started\n");
+    }
+
+    int addrlen = sizeof(serv_addr);
+    printf("Server Address Length: %d\n", addrlen);
+
+    return sockfd;
 }
