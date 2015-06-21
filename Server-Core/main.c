@@ -3,7 +3,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
+#include <unistd.h>
+#include <pthread.h>
 #include <errno.h>
 #include "main.h"
 
@@ -11,21 +12,37 @@
 int main(int argc, char* argv[]){
     int sockfd, newsockfd, portno, clilen, n;
     char buffer[256];
-    struct sockaddr_in serv_addr, cli_addr;
 
+    struct param p;
+    pthread_t pth;
     //Determines the port number
     portno = getportno(argc, argv);
-
+    p.portno = portno;
+    pthread_create(&pth, NULL, core_thread_main, (void*)&p);
+    sleep(10);
+    return 0;
 }
 
-int core_thread_main(int portno){}
+void *core_thread_main(void *pParam){
+    struct param p;
+    p = *(struct param*)pParam;
+    int sockfd, portno;
+    struct sockaddr_in serv_addr, cli_addr;
+    printf("Thread Started\n");
+
+    //set port number and bind port
+    portno = p.portno;
     sockfd = getsockfd();
     serv_addr = getservaddr(portno);
     if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){
         printf("ERROR: Port binding failed\n");
         exit(0);
+    }else{
+        printf("Port binding successfully\n");
     }
-    return 0;
+
+    //start listening
+    return NULL;
 }
 
 int getportno(int argc, char* argv[]){
@@ -55,7 +72,7 @@ int getsockfd(){
     return sockfd;
 }
 
-int getservaddr(int portno){
+struct sockaddr_in getservaddr(int portno){
     struct sockaddr_in serv_addr;
     bzero((char*)&serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;

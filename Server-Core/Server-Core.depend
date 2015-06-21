@@ -1,10 +1,12 @@
 # depslib dependency file v1.0
-1434832433 source:/home/zhshr/git/CS513/Server-Core/main.c
+1434862621 source:/home/zhshr/git/CS513/Server-Core/main.c
 	<stdio.h>
 	<stdlib.h>
 	<sys/types.h>
 	<sys/socket.h>
 	<netinet/in.h>
+	<unistd.h>
+	<pthread.h>
 	<errno.h>
 	"main.h"
 
@@ -27,7 +29,7 @@
 	<sys/socket.h>
 	<netinet/in.h>
 
-1434831894 /home/zhshr/git/CS513/Server-Core/main.h
+1434861183 /home/zhshr/git/CS513/Server-Core/main.h
 
 1434831894 source:/home/zhshr/git/CS513/Server-Core/main.h
 
