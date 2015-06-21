@@ -1,1 +1,5 @@
 */bin/*/*
+*/obj/*/*
+.gitignore~
+*.depend
+*.layout
