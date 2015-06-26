@@ -47,6 +47,9 @@
 		<Unit filename="main.h">
 			<Option target="&lt;{~None~}&gt;" />
 		</Unit>
+		<Unit filename="processmessage.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="server.c">
 			<Option compilerVar="CC" />
 			<Option compile="0" />

@@ -1,23 +1,22 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/errno.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
 #include <errno.h>
-#include "main.h"
+#include <stdlib.h>
+#include "shared.h"
+#include "mysocket.h"
 
-#define TRUE 1
-#define FALSE 0
+
 
 int main(int argc, char* argv[]){
     int sockfd, newsockfd, portno, clilen, n;
     char buffer[256];
-
     struct param p;
     pthread_t pth;
     //Determines the port number
@@ -36,10 +35,11 @@ void *core_thread_main(void *pParam){
     p = *(struct param*)pParam;
 
     int sockfd;
-    struct sockaddr_in serv_addr, cli_addr;
+    struct sockaddr_in cli_addr;
 
-    sockfd = setupmastersocket(p.portno);
+    sockfd = createsocket(p.portno,TRUE);
 
+    printf("%d\n",sockfd);
     //clients
     int clients[MAX_CLIENTS];
     char (*nicknames[MAX_CLIENTS])[100];
@@ -51,10 +51,7 @@ void *core_thread_main(void *pParam){
         clients[i] = 0;
     }
 
-
-
     //enter main loop
-
 
     int maxsd = 0;
     int activity = 0;
@@ -121,6 +118,7 @@ void *core_thread_main(void *pParam){
                 if (FD_ISSET(clients[i], &fds)){
                     printf("Message from socket number %d, fd %d\n", i, clients[i]);
                     //Socket No.i is ready to write
+                    bzero(buffer, sizeof(buffer));
                     if ((lenread = read(clients[i], buffer, BUFFER_SIZE))==0){
                         // The socket is closed by client
                         getpeername(clients[i], (struct sockaddr*)&cli_addr, (socklen_t*)&cli_addrlen);
@@ -146,12 +144,12 @@ int getportno(int argc, char* argv[]){
     int portno = 0;
     if (argc<2){
         fprintf(stderr,"WARNING: No port provided. Using 12345 as default\n");
-        portno = 12345;
+        portno = 11111;
     }else{
         portno = strtol(argv[1],NULL,10);
         if (errno!=0){
             fprintf(stderr,"WARNING: Port provided is invalid. Using 12345 as default\n");
-            portno = 12345;
+            portno = 11111;
         }
     }
     printf("Using port %d\n",portno);
@@ -172,46 +170,5 @@ int setupmastersocket(int portno){
 
     //create parent socket
     //variables related with creating socket
-    int opt = TRUE;
-    int sockfd;
-    struct sockaddr_in serv_addr;
 
-    //set port number and bind port
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd<0){
-        printf("ERROR: Failed creating socket.");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Socket File Descripter: %d\n", sockfd);
-    }
-
-    //set socket to accept multiple connections
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt)) < 0){
-        printf("ERROR: Set Reuse Addr failed\n");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Set Reuse Addr successful\n");
-    }
-
-    //bind port
-    serv_addr = getservaddr(portno);
-    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){
-        printf("ERROR: Port binding failed\n");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Port binding successfully, listening on port %d\n", portno);
-    }
-
-    //start listening
-    if (listen(sockfd, 10) < 0){
-        printf("ERROR: Listen failed\n");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Socket listening started\n");
-    }
-
-    int addrlen = sizeof(serv_addr);
-    printf("Server Address Length: %d\n", addrlen);
-
-    return sockfd;
 }
