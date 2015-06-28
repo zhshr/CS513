@@ -4,8 +4,12 @@
 #include <netinet/in.h>
 #include <errno.h>
 #include <stdlib.h>
-int createsocket(int portno, int server){
+
+struct sockaddr_in getservaddr(int portno);
+
+int createsocket(int portno, int range, int server){
     int sockfd;
+    char temp[100];
     printf("create socket\n");
     struct sockaddr_in sock_addr;
 
@@ -19,19 +23,24 @@ int createsocket(int portno, int server){
     }
 
     //bind port
-    sock_addr = getservaddr(portno);
-    if (bind(sockfd, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) < 0){
-        printf("ERROR: Port binding failed\n");
-        exit(EXIT_FAILURE);
-    }else{
-        printf("Port binding successfully, listening on port %d\n", portno);
-    }
-
+    int port = portno - 1;
+    do{
+        port++;
+        if (port>portno + range){
+            mylog("No port available");
+            exit(EXIT_FAILURE);
+        }
+        sprintf(temp, "Trying to bind port %d\n", port);
+        mylog(temp);
+        sock_addr = getservaddr(port);
+    }while (bind(sockfd, (struct sockaddr *)&sock_addr, sizeof(sock_addr)) < 0);
+    printf("Port binding successfully, port %d\n", port);
     if (server==TRUE){
         setsockforserver(sockfd);
         int addrlen = sizeof(sock_addr);
         printf("Server Address Length: %d\n", addrlen);
     }else{
+        setsockforclient(sockfd);
 
     }
     return sockfd;
@@ -54,6 +63,18 @@ int setsockforserver(int sockfd){
     }else{
         printf("Socket listening started\n");
     }
+}
+
+int setsockforclient(int sockfd){
+
+}
+struct sockaddr_in getservaddr(int portno){
+    struct sockaddr_in serv_addr;
+    bzero((char*)&serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(portno);
+    return serv_addr;
 }
 
 int socksockforclient(int sockfd){

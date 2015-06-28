@@ -6,12 +6,6 @@
 #define TRUE 1
 #define FALSE 0
 
-struct param{
-    int portno;
-};
-int getportno(int argc, char* argv[]);
-struct sockaddr_in getservaddr(int portno);
-void *core_thread_main(void *pParam);
-int setupmastersocket(int portno);
+int mylog(char *message);
 #endif
 

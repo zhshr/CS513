@@ -12,7 +12,10 @@
 #include "shared.h"
 #include "mysocket.h"
 
-
+struct param{
+    int portno;
+};
+void *core_thread_main(void *pParam);
 
 int main(int argc, char* argv[]){
     int sockfd, newsockfd, portno, clilen, n;
@@ -105,6 +108,13 @@ void *core_thread_main(void *pParam){
                     free(nicknames[i]);
                     nicknames[i] = malloc(strlen("Annoymous")+1);
                     strcpy(nicknames[i], "Annoymous");
+                    char temp[50];
+                    sprintf(temp,"Hello, your client id is %d", i);
+                    if (sendtosocket(new_socket, temp)==0){
+
+                    }else{
+                        printf("Hello sent\n");
+                    }
                     break;
                 }
             }
@@ -157,14 +167,7 @@ int getportno(int argc, char* argv[]){
 }
 
 
-struct sockaddr_in getservaddr(int portno){
-    struct sockaddr_in serv_addr;
-    bzero((char*)&serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(portno);
-    return serv_addr;
-}
+
 
 int setupmastersocket(int portno){
 
